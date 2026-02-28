@@ -67,10 +67,6 @@ export default function HomeScreen() {
 
   const playAlarm = async (alarmType: 'bell' | 'chime' | 'beep' | 'silent') => {
     if (alarmType === 'silent') {
-      // バイブレーション（Web では動作しない）
-      if (Platform.OS !== 'web') {
-        // Vibration.vibrate([0, 500, 200, 500]);
-      }
       return;
     }
 
@@ -79,27 +75,47 @@ export default function HomeScreen() {
         playsInSilentModeIOS: true,
       });
 
-      // 簡易的なビープ音を生成（実際の音声ファイルの代わり）
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        // Web Audio API を使った簡易音
-        { uri: `data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjGH0fPTgjMGHm7A7+OZQQ0TX6bi8bBYFgtOo+Pvu2ggBzaM0/PTfiwGI3fG8N+PPwsVYLXq66hWFApFoeLxwGwh` },
-        { shouldPlay: true }
-      );
-      setSound(newSound);
-
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          newSound.unloadAsync();
+      // Web Audio API を使って音を生成
+      if (typeof window !== 'undefined' && window.AudioContext) {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // アラームタイプによって周波数を変更
+        switch (alarmType) {
+          case 'bell':
+            oscillator.frequency.value = 800;
+            break;
+          case 'chime':
+            oscillator.frequency.value = 1200;
+            break;
+          case 'beep':
+            oscillator.frequency.value = 400;
+            break;
         }
-      });
+        
+        oscillator.type = 'sine';
+        gainNode.gain.value = 0.3;
+        
+        oscillator.start();
+        
+        // 2秒間鳴らす
+        setTimeout(() => {
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+          setTimeout(() => oscillator.stop(), 500);
+        }, 2000);
+      }
     } catch (error) {
       console.error('音声再生エラー:', error);
     }
   };
 
   const addTimer = () => {
-    const minutes = parseInt(newTimerMinutes);
-    if (!newTimerName || !minutes || minutes <= 0) {
+    const minutes = parseFloat(newTimerMinutes);
+    if (!newTimerName || isNaN(minutes) || minutes <= 0) {
       Alert.alert('エラー', '名前と時間（分）を正しく入力してください');
       return;
     }
@@ -120,17 +136,17 @@ export default function HomeScreen() {
   };
 
   const deleteTimer = (id: string) => {
-  if (Platform.OS === 'web') {
-    if (confirm('本当に削除しますか？')) {
-      saveTimers(timers.filter(t => t.id !== id));
+    if (Platform.OS === 'web') {
+      if (confirm('本当に削除しますか？')) {
+        saveTimers(timers.filter(t => t.id !== id));
+      }
+    } else {
+      Alert.alert('確認', '本当に削除しますか？', [
+        { text: 'キャンセル' },
+        { text: '削除', onPress: () => saveTimers(timers.filter(t => t.id !== id)) },
+      ]);
     }
-  } else {
-    Alert.alert('確認', '本当に削除しますか？', [
-      { text: 'キャンセル' },
-      { text: '削除', onPress: () => saveTimers(timers.filter(t => t.id !== id)) },
-    ]);
-  }
-};
+  };
 
   const startTimer = (timer: Timer) => {
     if (activeTimer) {
