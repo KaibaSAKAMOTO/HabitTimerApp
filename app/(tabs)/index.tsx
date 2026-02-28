@@ -120,11 +120,17 @@ export default function HomeScreen() {
   };
 
   const deleteTimer = (id: string) => {
+  if (Platform.OS === 'web') {
+    if (confirm('本当に削除しますか？')) {
+      saveTimers(timers.filter(t => t.id !== id));
+    }
+  } else {
     Alert.alert('確認', '本当に削除しますか？', [
       { text: 'キャンセル' },
       { text: '削除', onPress: () => saveTimers(timers.filter(t => t.id !== id)) },
     ]);
-  };
+  }
+};
 
   const startTimer = (timer: Timer) => {
     if (activeTimer) {
