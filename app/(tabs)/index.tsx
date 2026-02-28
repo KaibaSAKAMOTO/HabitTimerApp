@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Audio } from 'expo-av';
 
 interface Timer {
   id: string;
   name: string;
-  duration: number; // 秒
-  count: number; // 今日の実行回数
+  duration: number;
+  count: number;
+  alarmType: 'bell' | 'chime' | 'beep' | 'silent';
 }
 
 export default function HomeScreen() {
@@ -16,13 +18,18 @@ export default function HomeScreen() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTimerName, setNewTimerName] = useState('');
   const [newTimerMinutes, setNewTimerMinutes] = useState('');
+  const [newTimerAlarm, setNewTimerAlarm] = useState<'bell' | 'chime' | 'beep' | 'silent'>('bell');
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
 
-  // 初期データ読み込み
   useEffect(() => {
     loadTimers();
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
   }, []);
 
-  // タイマーのカウントダウン
   useEffect(() => {
     if (activeTimer && remainingTime > 0) {
       const interval = setInterval(() => {
@@ -58,6 +65,38 @@ export default function HomeScreen() {
     }
   };
 
+  const playAlarm = async (alarmType: 'bell' | 'chime' | 'beep' | 'silent') => {
+    if (alarmType === 'silent') {
+      // バイブレーション（Web では動作しない）
+      if (Platform.OS !== 'web') {
+        // Vibration.vibrate([0, 500, 200, 500]);
+      }
+      return;
+    }
+
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+      });
+
+      // 簡易的なビープ音を生成（実際の音声ファイルの代わり）
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        // Web Audio API を使った簡易音
+        { uri: `data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjGH0fPTgjMGHm7A7+OZQQ0TX6bi8bBYFgtOo+Pvu2ggBzaM0/PTfiwGI3fG8N+PPwsVYLXq66hWFApFoeLxwGwh` },
+        { shouldPlay: true }
+      );
+      setSound(newSound);
+
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          newSound.unloadAsync();
+        }
+      });
+    } catch (error) {
+      console.error('音声再生エラー:', error);
+    }
+  };
+
   const addTimer = () => {
     const minutes = parseInt(newTimerMinutes);
     if (!newTimerName || !minutes || minutes <= 0) {
@@ -70,11 +109,13 @@ export default function HomeScreen() {
       name: newTimerName,
       duration: minutes * 60,
       count: 0,
+      alarmType: newTimerAlarm,
     };
 
     saveTimers([...timers, newTimer]);
     setNewTimerName('');
     setNewTimerMinutes('');
+    setNewTimerAlarm('bell');
     setShowAddForm(false);
   };
 
@@ -100,9 +141,13 @@ export default function HomeScreen() {
   };
 
   const handleTimerComplete = () => {
+    const timer = timers.find(t => t.id === activeTimer);
+    if (timer) {
+      playAlarm(timer.alarmType);
+    }
+    
     Alert.alert('完了！', 'タイマーが終了しました！');
     
-    // 実行回数を増やす
     const updatedTimers = timers.map(t => 
       t.id === activeTimer ? { ...t, count: t.count + 1 } : t
     );
@@ -122,6 +167,16 @@ export default function HomeScreen() {
     return timers.reduce((sum, t) => sum + (t.duration * t.count), 0);
   };
 
+  const getAlarmLabel = (alarmType: string) => {
+    switch (alarmType) {
+      case 'bell': return '🔔 ベル';
+      case 'chime': return '🎵 チャイム';
+      case 'beep': return '📢 ビープ';
+      case 'silent': return '📳 バイブ';
+      default: return '🔔 ベル';
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>習慣タイマー</Text>
@@ -138,7 +193,7 @@ export default function HomeScreen() {
             <View style={styles.timerInfo}>
               <Text style={styles.timerName}>{timer.name}</Text>
               <Text style={styles.timerDuration}>
-                {formatTime(timer.duration)} | 実行: {timer.count}回
+                {formatTime(timer.duration)} | 実行: {timer.count}回 | {getAlarmLabel(timer.alarmType)}
               </Text>
             </View>
             
@@ -189,6 +244,28 @@ export default function HomeScreen() {
             onChangeText={setNewTimerMinutes}
             keyboardType="numeric"
           />
+          
+          <Text style={styles.alarmLabel}>アラーム音:</Text>
+          <View style={styles.alarmOptions}>
+            {(['bell', 'chime', 'beep', 'silent'] as const).map(type => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.alarmOption,
+                  newTimerAlarm === type && styles.alarmOptionSelected
+                ]}
+                onPress={() => setNewTimerAlarm(type)}
+              >
+                <Text style={[
+                  styles.alarmOptionText,
+                  newTimerAlarm === type && styles.alarmOptionTextSelected
+                ]}>
+                  {getAlarmLabel(type)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <View style={styles.formButtons}>
             <TouchableOpacity style={styles.cancelButton} onPress={() => setShowAddForm(false)}>
               <Text style={styles.buttonText}>キャンセル</Text>
@@ -306,6 +383,37 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginBottom: 10,
     fontSize: 16,
+  },
+  alarmLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  alarmOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 15,
+  },
+  alarmOption: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  alarmOptionSelected: {
+    backgroundColor: '#4CAF50',
+  },
+  alarmOptionText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  alarmOptionTextSelected: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   formButtons: {
     flexDirection: 'row',
