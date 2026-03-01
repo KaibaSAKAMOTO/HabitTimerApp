@@ -75,30 +75,48 @@ export default function HomeScreen() {
         playsInSilentModeIOS: true,
       });
 
-      // 音声ファイルを読み込んで再生
-      let soundFile;
-      switch (alarmType) {
-        case 'bell':
-          soundFile = require('@/assets/sounds/bell.mp3');
-          break;
-        case 'chime':
-          soundFile = require('@/assets/sounds/chime.mp3');
-          break;
-        case 'beep':
-          soundFile = require('@/assets/sounds/beep.mp3');
-          break;
-      }
-
-      const { sound: newSound } = await Audio.Sound.createAsync(soundFile);
-      setSound(newSound);
-
-      await newSound.playAsync();
-
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          newSound.unloadAsync();
+      // Web用の処理
+      if (Platform.OS === 'web') {
+        // HTMLAudioを使用
+        const audio = new Audio();
+        switch (alarmType) {
+          case 'bell':
+            audio.src = '/assets/sounds/bell.mp3';
+            break;
+          case 'chime':
+            audio.src = '/assets/sounds/chime.mp3';
+            break;
+          case 'beep':
+            audio.src = '/assets/sounds/beep.mp3';
+            break;
         }
-      });
+        audio.play().catch(err => console.error('音声再生エラー:', err));
+      } else {
+        // ネイティブアプリ用の処理
+        let soundFile;
+        switch (alarmType) {
+          case 'bell':
+            soundFile = require('@/assets/sounds/bell.mp3');
+            break;
+          case 'chime':
+            soundFile = require('@/assets/sounds/chime.mp3');
+            break;
+          case 'beep':
+            soundFile = require('@/assets/sounds/beep.mp3');
+            break;
+        }
+
+        const { sound: newSound } = await Audio.Sound.createAsync(soundFile);
+        setSound(newSound);
+
+        await newSound.playAsync();
+
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            newSound.unloadAsync();
+          }
+        });
+      }
     } catch (error) {
       console.error('音声再生エラー:', error);
     }
