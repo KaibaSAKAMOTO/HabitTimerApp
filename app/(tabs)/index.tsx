@@ -71,28 +71,29 @@ export default function HomeScreen() {
     }
 
     try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-      });
-
       // Web用の処理
       if (Platform.OS === 'web') {
         // HTMLAudioを使用
         const audio = new Audio();
+        const baseUrl = window.location.origin;
         switch (alarmType) {
           case 'bell':
-            audio.src = '/assets/sounds/bell.mp3';
+            audio.src = `${baseUrl}/_expo/static/media/assets/sounds/bell.mp3`;
             break;
           case 'chime':
-            audio.src = '/assets/sounds/chime.mp3';
+            audio.src = `${baseUrl}/_expo/static/media/assets/sounds/chime.mp3`;
             break;
           case 'beep':
-            audio.src = '/assets/sounds/beep.mp3';
+            audio.src = `${baseUrl}/_expo/static/media/assets/sounds/beep.mp3`;
             break;
         }
         audio.play().catch(err => console.error('音声再生エラー:', err));
       } else {
         // ネイティブアプリ用の処理
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+        });
+
         let soundFile;
         switch (alarmType) {
           case 'bell':
@@ -179,18 +180,15 @@ export default function HomeScreen() {
     setRemainingTime(0);
   };
 
-  const handleTimerComplete = () => {
+  const handleTimerComplete = async () => {
     const timer = timers.find(t => t.id === activeTimer);
+    
+    // 音を先に鳴らす（アラートの前）
     if (timer) {
-      playAlarm(timer.alarmType);
+      await playAlarm(timer.alarmType);
     }
     
-    if (Platform.OS === 'web') {
-      alert('完了！タイマーが終了しました！');
-    } else {
-      Alert.alert('完了！', 'タイマーが終了しました！');
-    }
-    
+    // 実行回数を更新
     const updatedTimers = timers.map(t => 
       t.id === activeTimer ? { ...t, count: t.count + 1 } : t
     );
@@ -198,6 +196,15 @@ export default function HomeScreen() {
     
     setActiveTimer(null);
     setRemainingTime(0);
+    
+    // 少し遅延してからアラート表示（音が鳴り始めてから）
+    setTimeout(() => {
+      if (Platform.OS === 'web') {
+        alert('完了！タイマーが終了しました！');
+      } else {
+        Alert.alert('完了！', 'タイマーが終了しました！');
+      }
+    }, 100);
   };
 
   const formatTime = (seconds: number) => {
