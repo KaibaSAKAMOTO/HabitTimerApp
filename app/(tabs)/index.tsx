@@ -75,39 +75,30 @@ export default function HomeScreen() {
         playsInSilentModeIOS: true,
       });
 
-      // Web Audio API を使って音を生成
-      if (typeof window !== 'undefined' && window.AudioContext) {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // アラームタイプによって周波数を変更
-        switch (alarmType) {
-          case 'bell':
-            oscillator.frequency.value = 800;
-            break;
-          case 'chime':
-            oscillator.frequency.value = 1200;
-            break;
-          case 'beep':
-            oscillator.frequency.value = 400;
-            break;
-        }
-        
-        oscillator.type = 'sine';
-        gainNode.gain.value = 0.3;
-        
-        oscillator.start();
-        
-        // 2秒間鳴らす
-        setTimeout(() => {
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-          setTimeout(() => oscillator.stop(), 500);
-        }, 2000);
+      // 音声ファイルを読み込んで再生
+      let soundFile;
+      switch (alarmType) {
+        case 'bell':
+          soundFile = require('@/assets/sounds/bell.mp3');
+          break;
+        case 'chime':
+          soundFile = require('@/assets/sounds/chime.mp3');
+          break;
+        case 'beep':
+          soundFile = require('@/assets/sounds/beep.mp3');
+          break;
       }
+
+      const { sound: newSound } = await Audio.Sound.createAsync(soundFile);
+      setSound(newSound);
+
+      await newSound.playAsync();
+
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          newSound.unloadAsync();
+        }
+      });
     } catch (error) {
       console.error('音声再生エラー:', error);
     }
@@ -116,7 +107,11 @@ export default function HomeScreen() {
   const addTimer = () => {
     const minutes = parseFloat(newTimerMinutes);
     if (!newTimerName || isNaN(minutes) || minutes <= 0) {
-      Alert.alert('エラー', '名前と時間（分）を正しく入力してください');
+      if (Platform.OS === 'web') {
+        alert('名前と時間（分）を正しく入力してください');
+      } else {
+        Alert.alert('エラー', '名前と時間（分）を正しく入力してください');
+      }
       return;
     }
 
@@ -150,7 +145,11 @@ export default function HomeScreen() {
 
   const startTimer = (timer: Timer) => {
     if (activeTimer) {
-      Alert.alert('お知らせ', '他のタイマーが実行中です');
+      if (Platform.OS === 'web') {
+        alert('他のタイマーが実行中です');
+      } else {
+        Alert.alert('お知らせ', '他のタイマーが実行中です');
+      }
       return;
     }
     setActiveTimer(timer.id);
@@ -168,7 +167,11 @@ export default function HomeScreen() {
       playAlarm(timer.alarmType);
     }
     
-    Alert.alert('完了！', 'タイマーが終了しました！');
+    if (Platform.OS === 'web') {
+      alert('完了！タイマーが終了しました！');
+    } else {
+      Alert.alert('完了！', 'タイマーが終了しました！');
+    }
     
     const updatedTimers = timers.map(t => 
       t.id === activeTimer ? { ...t, count: t.count + 1 } : t
