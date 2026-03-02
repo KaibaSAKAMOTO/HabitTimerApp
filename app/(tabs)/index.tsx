@@ -16,6 +16,7 @@ export default function HomeScreen() {
   const [activeTimer, setActiveTimer] = useState<string | null>(null);
   const [remainingTime, setRemainingTime] = useState(0);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingTimer, setEditingTimer] = useState<Timer | null>(null);
   const [newTimerName, setNewTimerName] = useState('');
   const [newTimerMinutes, setNewTimerMinutes] = useState('');
   const [newTimerAlarm, setNewTimerAlarm] = useState<'bell' | 'chime' | 'beep' | 'silent'>('bell');
@@ -73,7 +74,6 @@ export default function HomeScreen() {
     try {
       // Web用の処理
       if (Platform.OS === 'web') {
-        // HTMLAudioを使用
         const audio = new Audio();
         const baseUrl = window.location.origin;
         switch (alarmType) {
@@ -89,7 +89,6 @@ export default function HomeScreen() {
         }
         audio.play().catch(err => console.error('音声再生エラー:', err));
       } else {
-        // ネイティブアプリ用の処理
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
         });
@@ -149,6 +148,46 @@ export default function HomeScreen() {
     setShowAddForm(false);
   };
 
+  const startEdit = (timer: Timer) => {
+    setEditingTimer(timer);
+    setNewTimerName(timer.name);
+    setNewTimerMinutes((timer.duration / 60).toString());
+    setNewTimerAlarm(timer.alarmType);
+  };
+
+  const saveEdit = () => {
+    if (!editingTimer) return;
+
+    const minutes = parseFloat(newTimerMinutes);
+    if (!newTimerName || isNaN(minutes) || minutes <= 0) {
+      if (Platform.OS === 'web') {
+        alert('名前と時間（分）を正しく入力してください');
+      } else {
+        Alert.alert('エラー', '名前と時間（分）を正しく入力してください');
+      }
+      return;
+    }
+
+    const updatedTimers = timers.map(t =>
+      t.id === editingTimer.id
+        ? { ...t, name: newTimerName, duration: minutes * 60, alarmType: newTimerAlarm }
+        : t
+    );
+
+    saveTimers(updatedTimers);
+    setEditingTimer(null);
+    setNewTimerName('');
+    setNewTimerMinutes('');
+    setNewTimerAlarm('bell');
+  };
+
+  const cancelEdit = () => {
+    setEditingTimer(null);
+    setNewTimerName('');
+    setNewTimerMinutes('');
+    setNewTimerAlarm('bell');
+  };
+
   const deleteTimer = (id: string) => {
     if (Platform.OS === 'web') {
       if (confirm('本当に削除しますか？')) {
@@ -183,12 +222,10 @@ export default function HomeScreen() {
   const handleTimerComplete = async () => {
     const timer = timers.find(t => t.id === activeTimer);
     
-    // 音を先に鳴らす（アラートの前）
     if (timer) {
       await playAlarm(timer.alarmType);
     }
     
-    // 実行回数を更新
     const updatedTimers = timers.map(t => 
       t.id === activeTimer ? { ...t, count: t.count + 1 } : t
     );
@@ -197,7 +234,6 @@ export default function HomeScreen() {
     setActiveTimer(null);
     setRemainingTime(0);
     
-    // 少し遅延してからアラート表示（音が鳴り始めてから）
     setTimeout(() => {
       if (Platform.OS === 'web') {
         alert('完了！タイマーが終了しました！');
@@ -264,6 +300,12 @@ export default function HomeScreen() {
                   <Text style={styles.buttonText}>開始</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
+                  style={styles.editButton} 
+                  onPress={() => startEdit(timer)}
+                >
+                  <Text style={styles.buttonText}>編集</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
                   style={styles.deleteButton} 
                   onPress={() => deleteTimer(timer.id)}
                 >
@@ -275,12 +317,60 @@ export default function HomeScreen() {
         ))}
       </ScrollView>
 
-      {!showAddForm ? (
+      {editingTimer ? (
+        <View style={styles.addForm}>
+          <Text style={styles.formTitle}>タイマーを編集</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="タイマー名（例：読書）"
+            value={newTimerName}
+            onChangeText={setNewTimerName}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="時間（分）"
+            value={newTimerMinutes}
+            onChangeText={setNewTimerMinutes}
+            keyboardType="numeric"
+          />
+          
+          <Text style={styles.alarmLabel}>アラーム音:</Text>
+          <View style={styles.alarmOptions}>
+            {(['bell', 'chime', 'beep', 'silent'] as const).map(type => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.alarmOption,
+                  newTimerAlarm === type && styles.alarmOptionSelected
+                ]}
+                onPress={() => setNewTimerAlarm(type)}
+              >
+                <Text style={[
+                  styles.alarmOptionText,
+                  newTimerAlarm === type && styles.alarmOptionTextSelected
+                ]}>
+                  {getAlarmLabel(type)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.formButtons}>
+            <TouchableOpacity style={styles.cancelButton} onPress={cancelEdit}>
+              <Text style={styles.buttonText}>キャンセル</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.saveButton} onPress={saveEdit}>
+              <Text style={styles.buttonText}>保存</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : !showAddForm ? (
         <TouchableOpacity style={styles.addButton} onPress={() => setShowAddForm(true)}>
           <Text style={styles.addButtonText}>+ 新しいタイマーを追加</Text>
         </TouchableOpacity>
       ) : (
         <View style={styles.addForm}>
+          <Text style={styles.formTitle}>新しいタイマーを追加</Text>
           <TextInput
             style={styles.input}
             placeholder="タイマー名（例：読書）"
@@ -399,6 +489,11 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 5,
   },
+  editButton: {
+    backgroundColor: '#2196F3',
+    padding: 10,
+    borderRadius: 5,
+  },
   deleteButton: {
     backgroundColor: '#ff9800',
     padding: 10,
@@ -426,6 +521,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 10,
   },
+  formTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -437,50 +538,3 @@ const styles = StyleSheet.create({
   alarmLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
-  },
-  alarmOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 15,
-  },
-  alarmOption: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: '#f0f0f0',
-    padding: 12,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  alarmOptionSelected: {
-    backgroundColor: '#4CAF50',
-  },
-  alarmOptionText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  alarmOptionTextSelected: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  formButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#999',
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: '#4CAF50',
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-});
