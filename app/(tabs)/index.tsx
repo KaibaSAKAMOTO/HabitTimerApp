@@ -537,4 +537,4 @@ const styles = StyleSheet.create({
   },
   alarmLabel: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: 'bold', //
