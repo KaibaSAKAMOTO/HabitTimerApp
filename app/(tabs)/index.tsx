@@ -104,7 +104,7 @@ export default function HomeScreen() {
 
     try {
       if (Platform.OS === 'web') {
-  const audio = new Audio();
+  const audio = new (window as any).Audio();
   switch (alarmType) {
     case 'bell':
       audio.src = '/sounds/bell.mp3';
