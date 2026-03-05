@@ -72,7 +72,6 @@ export default function HomeScreen() {
     }
 
     try {
-      // Web用の処理
       if (Platform.OS === 'web') {
         const audio = new Audio();
         const baseUrl = window.location.origin;
@@ -537,4 +536,51 @@ const styles = StyleSheet.create({
   },
   alarmLabel: {
     fontSize: 16,
-    fontWeight: 'bold', //
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  alarmOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 15,
+  },
+  alarmOption: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  alarmOptionSelected: {
+    backgroundColor: '#4CAF50',
+  },
+  alarmOptionText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  alarmOptionTextSelected: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  formButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#999',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#4CAF50',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+});
