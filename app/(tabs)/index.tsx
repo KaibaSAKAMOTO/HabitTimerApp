@@ -46,11 +46,42 @@ export default function HomeScreen() {
     }
   }, [activeTimer, remainingTime]);
 
+  const getTodayDate = () => {
+    const today = new Date();
+    return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  };
+
+  const checkAndResetDaily = async (loadedTimers: Timer[]) => {
+    try {
+      const lastDate = await AsyncStorage.getItem('lastAccessDate');
+      const today = getTodayDate();
+
+      if (lastDate !== today) {
+        // 日付が変わっている場合、実行回数をリセット
+        const resetTimers = loadedTimers.map(t => ({ ...t, count: 0 }));
+        await AsyncStorage.setItem('timers', JSON.stringify(resetTimers));
+        await AsyncStorage.setItem('lastAccessDate', today);
+        return resetTimers;
+      }
+
+      await AsyncStorage.setItem('lastAccessDate', today);
+      return loadedTimers;
+    } catch (error) {
+      console.error('日付チェックエラー:', error);
+      return loadedTimers;
+    }
+  };
+
   const loadTimers = async () => {
     try {
       const saved = await AsyncStorage.getItem('timers');
       if (saved) {
-        setTimers(JSON.parse(saved));
+        const loadedTimers = JSON.parse(saved);
+        const resetTimers = await checkAndResetDaily(loadedTimers);
+        setTimers(resetTimers);
+      } else {
+        // 初回アクセス時
+        await AsyncStorage.setItem('lastAccessDate', getTodayDate());
       }
     } catch (error) {
       console.error('データ読み込みエラー:', error);
