@@ -104,20 +104,19 @@ export default function HomeScreen() {
 
     try {
       if (Platform.OS === 'web') {
-        const audio = new Audio();
-        const baseUrl = window.location.origin;
-        switch (alarmType) {
-          case 'bell':
-            audio.src = `${baseUrl}/_expo/static/media/assets/sounds/bell.mp3`;
-            break;
-          case 'chime':
-            audio.src = `${baseUrl}/_expo/static/media/assets/sounds/chime.mp3`;
-            break;
-          case 'beep':
-            audio.src = `${baseUrl}/_expo/static/media/assets/sounds/beep.mp3`;
-            break;
-        }
-        audio.play().catch(err => console.error('音声再生エラー:', err));
+  const audio = new Audio();
+  switch (alarmType) {
+    case 'bell':
+      audio.src = '/sounds/bell.mp3';
+      break;
+    case 'chime':
+      audio.src = '/sounds/chime.mp3';
+      break;
+    case 'beep':
+      audio.src = '/sounds/beep.mp3';
+      break;
+  }
+  audio.play().catch(err => console.error('音声再生エラー:', err));
       } else {
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
