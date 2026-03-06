@@ -268,7 +268,6 @@ setTimeout(() => {
     alert('お疲れ様でした！');
   } else {
     Alert.alert('お疲れ様でした！', '');
-  }
 }, 2000);
 
   const formatTime = (seconds: number) => {
