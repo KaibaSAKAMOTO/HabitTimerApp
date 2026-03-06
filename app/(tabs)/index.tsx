@@ -248,29 +248,29 @@ export default function HomeScreen() {
     setRemainingTime(0);
   };
 
-  const handleTimerComplete = async () => {
-    const timer = timers.find(t => t.id === activeTimer);
-    
-    if (timer) {
-      await playAlarm(timer.alarmType);
+const handleTimerComplete = async () => {
+  const timer = timers.find(t => t.id === activeTimer);
+  
+  const updatedTimers = timers.map(t => 
+    t.id === activeTimer ? { ...t, count: t.count + 1 } : t
+  );
+  saveTimers(updatedTimers);
+  
+  setActiveTimer(null);
+  setRemainingTime(0);
+  
+  if (timer) {
+    await playAlarm(timer.alarmType);
+  }
+  
+  setTimeout(() => {
+    if (Platform.OS === 'web') {
+      alert('完了！タイマーが終了しました！');
+    } else {
+      Alert.alert('完了！', 'タイマーが終了しました！');
     }
-    
-    const updatedTimers = timers.map(t => 
-      t.id === activeTimer ? { ...t, count: t.count + 1 } : t
-    );
-    saveTimers(updatedTimers);
-    
-    setActiveTimer(null);
-    setRemainingTime(0);
-    
-    setTimeout(() => {
-      if (Platform.OS === 'web') {
-        alert('完了！タイマーが終了しました！');
-      } else {
-        Alert.alert('完了！', 'タイマーが終了しました！');
-      }
-    }, 100);
-  };
+  }, 2000);
+};
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
