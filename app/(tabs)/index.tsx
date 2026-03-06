@@ -263,14 +263,13 @@ const handleTimerComplete = async () => {
     await playAlarm(timer.alarmType);
   }
   
-  setTimeout(() => {
-    if (Platform.OS === 'web') {
-      alert('完了！タイマーが終了しました！');
-    } else {
-      Alert.alert('完了！', 'タイマーが終了しました！');
-    }
-  }, 2000);
-};
+setTimeout(() => {
+  if (Platform.OS === 'web') {
+    alert('お疲れ様でした！');
+  } else {
+    Alert.alert('お疲れ様でした！', '');
+  }
+}, 2000);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
