@@ -57,7 +57,6 @@ export default function HomeScreen() {
       const today = getTodayDate();
 
       if (lastDate !== today) {
-        // 日付が変わっている場合、実行回数をリセット
         const resetTimers = loadedTimers.map(t => ({ ...t, count: 0 }));
         await AsyncStorage.setItem('timers', JSON.stringify(resetTimers));
         await AsyncStorage.setItem('lastAccessDate', today);
@@ -80,7 +79,6 @@ export default function HomeScreen() {
         const resetTimers = await checkAndResetDaily(loadedTimers);
         setTimers(resetTimers);
       } else {
-        // 初回アクセス時
         await AsyncStorage.setItem('lastAccessDate', getTodayDate());
       }
     } catch (error) {
@@ -104,19 +102,19 @@ export default function HomeScreen() {
 
     try {
       if (Platform.OS === 'web') {
-  const audio = new (window as any).Audio();
-  switch (alarmType) {
-    case 'bell':
-      audio.src = '/sounds/bell.mp3';
-      break;
-    case 'chime':
-      audio.src = '/sounds/chime.mp3';
-      break;
-    case 'beep':
-      audio.src = '/sounds/beep.mp3';
-      break;
-  }
-  audio.play().catch(err => console.error('音声再生エラー:', err));
+        const audio = new (window as any).Audio();
+        switch (alarmType) {
+          case 'bell':
+            audio.src = '/sounds/bell.mp3';
+            break;
+          case 'chime':
+            audio.src = '/sounds/chime.mp3';
+            break;
+          case 'beep':
+            audio.src = '/sounds/beep.mp3';
+            break;
+        }
+        audio.play().catch(err => console.error('音声再生エラー:', err));
       } else {
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
@@ -248,28 +246,29 @@ export default function HomeScreen() {
     setRemainingTime(0);
   };
 
-const handleTimerComplete = async () => {
-  const timer = timers.find(t => t.id === activeTimer);
-  
-  const updatedTimers = timers.map(t => 
-    t.id === activeTimer ? { ...t, count: t.count + 1 } : t
-  );
-  saveTimers(updatedTimers);
-  
-  setActiveTimer(null);
-  setRemainingTime(0);
-  
-  if (timer) {
-    await playAlarm(timer.alarmType);
-  }
-  
-setTimeout(() => {
-  if (Platform.OS === 'web') {
-    alert('お疲れ様でした！');
-  } else {
-    Alert.alert('お疲れ様でした！', '');
-  }
-}, 2000);
+  const handleTimerComplete = async () => {
+    const timer = timers.find(t => t.id === activeTimer);
+    
+    const updatedTimers = timers.map(t => 
+      t.id === activeTimer ? { ...t, count: t.count + 1 } : t
+    );
+    saveTimers(updatedTimers);
+    
+    setActiveTimer(null);
+    setRemainingTime(0);
+    
+    if (timer) {
+      await playAlarm(timer.alarmType);
+    }
+    
+    setTimeout(() => {
+      if (Platform.OS === 'web') {
+        alert('お疲れ様でした！');
+      } else {
+        Alert.alert('お疲れ様でした！', '');
+      }
+    }, 2000);
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
